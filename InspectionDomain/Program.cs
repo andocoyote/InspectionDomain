@@ -17,6 +17,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using InspectionDomain.DomainModels;
+using EventStore.Events;
+using InspectionDomain.DomainModels.Events;
+using EventStore.Domain;
+using Microsoft.Azure.Cosmos;
 
 // Creating WebJobs that target .NET
 // https://learn.microsoft.com/en-us/azure/app-service/webjobs-sdk-get-started
@@ -30,8 +35,7 @@ namespace InspectionDomain
     {
         static async Task Main()
         {
-            Microsoft.Extensions.Configuration.ConfigurationManager configurationManager = new ConfigurationManager();
-            var builder = new HostBuilder();
+            HostBuilder builder = new HostBuilder();
 
             // The ConfigureWebJobs extension method initializes the WebJobs host
             builder.ConfigureWebJobs(b =>
@@ -71,8 +75,30 @@ namespace InspectionDomain
                 services.AddSingleton<IEstablishmentsProvider, EstablishmentsProvider>();
                 services.AddSingleton<ICosmosDbProviderFactory<InspectionData>, InspectionDataCosmosDbProviderFactory>();
                 services.AddSingleton<IExistingInspectionsTableProvider, Providers.ExistingInspectionsTableProvider.ExistingInspectionsTableProvider>();
+
+                // Event Store dependencies
+                // This allows the framework to provide the Cosmos DB Container to the IEventStreamClient
+                services.AddSingleton((s) =>
+                {
+                    CosmosClient cosmosClient = new CosmosClient(
+                        hostContext.Configuration["CosmosDb:Endpoint"],
+                        hostContext.Configuration["CosmosDb:Keys:ReadWrite"],
+                        new CosmosClientOptions()
+                        {
+                            ApplicationRegion = Regions.WestUS3,
+                        });
+
+                    Database db = cosmosClient.GetDatabase("EventStore");
+                    return db.GetContainer("TestEvents");
+                });
+                services.AddSingleton<IInspectionEventFactory, InspectionEventFactory>();
+                services.AddSingleton<IEventMapper<InspectionDomainModel>, InspectionEventMapper>();
+                services.AddSingleton<IEventStreamClient<InspectionDomainModel>, EventStreamClient<InspectionDomainModel>>();
+                services.AddSingleton<IInspectionDomainService, EventBasedInspectionDomainService>();
+
                 services.AddDbContext<FoodInspectorDatabaseContext>(options =>
-                    options.UseSqlServer(configurationManager.GetConnectionString("AZURE_SQL_CONNECTIONSTRING")));
+                    options.UseSqlServer(hostContext.Configuration.GetConnectionString("AZURE_SQL_CONNECTIONSTRING")));
+
                 services.AddLogging();
 
                 AddOptions(services, hostContext.Configuration);
@@ -83,7 +109,7 @@ namespace InspectionDomain
             {
                 b.SetMinimumLevel(LogLevel.Information);
                 b.AddConsole();
-                b.AddApplicationInsightsWebJobs(o => { o.ConnectionString = configurationManager.GetConnectionString("AzureWebJobsDashboard"); });
+                b.AddApplicationInsightsWebJobs(o => { o.ConnectionString = context.Configuration.GetConnectionString("AzureWebJobsDashboard"); });
             });
 
             IHost host = builder.Build();

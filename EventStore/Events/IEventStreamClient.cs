@@ -1,9 +1,7 @@
-﻿namespace EventStore.Events
-{
-    using EventStore.Domain;
-    using System;
-    using System.Threading.Tasks;
+﻿using EventStore.Domain;
 
+namespace EventStore.Events
+{
     public interface IEventStreamClient<DomainModel> where DomainModel : IDomainModel
     {
         Task<IEventStream<DomainModel>> CreateEventStream();

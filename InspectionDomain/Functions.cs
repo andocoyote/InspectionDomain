@@ -1,5 +1,6 @@
 ﻿using CommonFunctionality.CosmosDbProvider;
 using CommonFunctionality.Model;
+using InspectionDomain.DomainModels;
 using InspectionDomain.InspectionDataGatherer;
 using InspectionDomain.Providers.ExistingInspectionsTableProvider;
 using Microsoft.Azure.WebJobs;
@@ -17,6 +18,7 @@ namespace InspectionDomain
         private readonly IInspectionDataGatherer _inspectionDataGatherer;
         private readonly ICosmosDbProvider<InspectionData> _cosmosDbProvider;
         private readonly IExistingInspectionsTableProvider _existingInspectionsTableProvider;
+        private readonly IInspectionDomainService _inspectionDomainService;
         private ILogger _logger;
 
         public Functions(
@@ -24,13 +26,15 @@ namespace InspectionDomain
             IOptions<CosmosDbOptions> cosmosDbOptions,
             IInspectionDataGatherer inspectionDataGatherer,
             ICosmosDbProviderFactory<InspectionData> cosmosDbProviderFactory,
-            IExistingInspectionsTableProvider existingInspectionsTableProvider)
+            IExistingInspectionsTableProvider existingInspectionsTableProvider,
+            IInspectionDomainService inspectionDomainService)
         {
             _configuration = configuration;
             _cosmosDbOptions = cosmosDbOptions;
             _inspectionDataGatherer = inspectionDataGatherer;
             _cosmosDbProvider = cosmosDbProviderFactory.CreateProvider();
             _existingInspectionsTableProvider = existingInspectionsTableProvider;
+            _inspectionDomainService = inspectionDomainService;
         }
 
         public async Task ProcessMessageOnTimer(
@@ -68,6 +72,8 @@ namespace InspectionDomain
                         // and note the inspection serial number and ID to Azure Storage table
                         if (existingInspectionModelsList.Count == 0)
                         {
+                            InspectionDomainModel inspectionDomainModel = await _inspectionDomainService.CreateInspection(inspectionData.Inspection_Business_Name, "InspectionService", "1.0.0.0");
+
                             await _existingInspectionsTableProvider.AddInspectionRecord(
                             inspectionData.Inspection_Serial_Num,
                             inspectionData.id);

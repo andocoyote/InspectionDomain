@@ -1,12 +1,8 @@
-﻿namespace EventStore.Events
-{
-    using EventStore.Domain;
-    using Microsoft.Azure.Cosmos;
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Threading.Tasks;
+﻿using EventStore.Domain;
+using Microsoft.Azure.Cosmos;
 
+namespace EventStore.Events
+{
     public class EventStream<DomainModel> : IEventStream<DomainModel> where DomainModel : IDomainModel, new()
     {
         private IEnumerable<Event<DomainModel>> events;

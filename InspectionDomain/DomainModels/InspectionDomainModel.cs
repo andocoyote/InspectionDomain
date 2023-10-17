@@ -10,5 +10,13 @@ namespace InspectionDomain.DomainModels
         public bool IsSucceeded { get; }
 
         public InspectionDomainModel() { }
+
+        public InspectionDomainModel(string streamId, bool isFailed, bool isCancelled, bool isSucceeded)
+        {
+            StreamId = streamId;
+            IsFailed = isFailed;
+            IsCancelled = isCancelled;
+            IsSucceeded = isSucceeded;
+        }
     }
 }
